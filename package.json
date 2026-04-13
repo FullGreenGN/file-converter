@@ -15,6 +15,7 @@
     "dev": "tsup --watch",
     "clean": "rm -rf dist",
     "typecheck": "tsc --noEmit",
+    "test": "pnpm build && node --test test/smoke.test.mjs",
     "prepare": "pnpm run build"
   },
   "dependencies": {

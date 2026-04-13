@@ -97,6 +97,7 @@ pnpm unlink --global @fullgreen/converter
 pnpm dev
 pnpm typecheck
 pnpm build
+pnpm test
 ```
 
 ## Notes
@@ -104,4 +105,20 @@ pnpm build
 - HEIC conversion supports only JPG and PNG outputs.
 - DOCX conversion requires LibreOffice runtime binaries to be installed on your machine.
 - Unsupported file extensions are rejected with clear error messages.
+
+## Troubleshooting HEIC Errors
+
+If you see errors like:
+
+- `heif: Error while loading plugin: Support for this compression format has not been built in`
+- `bad seek` while reading a `.heic` file
+
+try:
+
+```bash
+pnpm rebuild sharp
+pnpm up sharp
+```
+
+Then run conversion again. If it still fails, the source HEIC may be corrupted or encoded with a codec your runtime cannot decode.
 
