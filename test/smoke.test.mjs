@@ -33,3 +33,10 @@ test('rejects unsupported extensions with a clear error', () => {
   assert.match(result.stderr, /Unsupported input format/i);
 });
 
+test('recognizes audio files and reaches file existence validation', () => {
+  const result = runCli(['./missing-track.mp3']);
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /Input file not found/i);
+});
+

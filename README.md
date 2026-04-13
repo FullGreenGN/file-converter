@@ -1,9 +1,10 @@
-# @fullgreengn/converter
+# @fullgreen/converter
 
 A CLI to convert:
 
 - `.heic` -> `.jpg` or `.png` (via `sharp`)
 - `.docx` -> `.pdf` (via `mammoth` + `puppeteer`)
+- audio files -> `.mp3` or `.wav` (via bundled `ffmpeg-static`)
 
 ## Requirements
 
@@ -52,11 +53,18 @@ fullgreen-convert ./report.docx
 
 # Explicit output path
 fullgreen-convert ./report.docx ./exports/report.pdf
+
+# Convert music to MP3 by default
+fullgreen-convert ./track.flac
+
+# Convert music to WAV explicitly
+fullgreen-convert ./track.m4a ./track.wav --format wav
 ```
 
 ### Interactive mode
 
-If no arguments are provided, the CLI prompts for input and output details:
+If no arguments are provided, the CLI prompts for input and output details.
+File paths use autocomplete-style suggestions, and `.docx` inputs show `.pdf` as the selectable output format:
 
 ```bash
 fullgreen-convert
@@ -67,13 +75,13 @@ fullgreen-convert
 After publishing to npm, run without global install:
 
 ```bash
-pnpm dlx @fullgreengn/converter ./photo.heic
+pnpm dlx @fullgreen/converter ./photo.heic
 ```
 
 You can also pass output and format:
 
 ```bash
-pnpm dlx @fullgreengn/converter ./photo.heic ./photo.png --format png
+pnpm dlx @fullgreen/converter ./photo.heic ./photo.png --format png
 ```
 
 ## Test Locally with Global Link
@@ -95,7 +103,7 @@ fullgreen-convert /absolute/path/to/input.heic
 To remove the global link:
 
 ```bash
-pnpm unlink --global @fullgreengn/converter
+pnpm unlink --global @fullgreen/converter
 ```
 
 ## Development Scripts
@@ -111,8 +119,12 @@ pnpm test
 
 - HEIC conversion supports only JPG and PNG outputs.
 - DOCX conversion is Node-only and uses an embedded Chromium runtime from `puppeteer`.
+- Audio conversion supports common music formats and outputs MP3 or WAV.
 - The first install can take longer because `puppeteer` downloads a browser binary.
 - Unsupported file extensions are rejected with clear error messages.
+- In interactive mode, file paths use autocomplete suggestions and `.pdf` is available as a selectable output format for `.docx` inputs.
+- Audio inputs can be converted interactively to either MP3 or WAV.
+- The codebase is split into `src/cli/*` and `src/converters/*` so the entrypoint stays thin.
 
 ## Troubleshooting HEIC Errors
 
