@@ -1,4 +1,4 @@
-# @fullgreen/converter
+# @fullgreengn/converter
 
 A CLI to convert:
 
@@ -67,13 +67,13 @@ fullgreen-convert
 After publishing to npm, run without global install:
 
 ```bash
-pnpm dlx @fullgreen/converter ./photo.heic
+pnpm dlx @fullgreengn/converter ./photo.heic
 ```
 
 You can also pass output and format:
 
 ```bash
-pnpm dlx @fullgreen/converter ./photo.heic ./photo.png --format png
+pnpm dlx @fullgreengn/converter ./photo.heic ./photo.png --format png
 ```
 
 ## Test Locally with Global Link
@@ -95,7 +95,7 @@ fullgreen-convert /absolute/path/to/input.heic
 To remove the global link:
 
 ```bash
-pnpm unlink --global @fullgreen/converter
+pnpm unlink --global @fullgreengn/converter
 ```
 
 ## Development Scripts
