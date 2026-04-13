@@ -1,17 +1,7 @@
-import { access, readFile, writeFile } from 'node:fs/promises';
+import { access } from 'node:fs/promises';
 import path from 'node:path';
-import libreofficeConvert from 'libreoffice-convert';
-
-interface LibreOfficeConvert {
-  convert: (
-    input: Buffer,
-    format: string,
-    filter: unknown,
-    callback: (error: Error | null, done?: Buffer) => void
-  ) => void;
-}
-
-const libre = libreofficeConvert as unknown as LibreOfficeConvert;
+import mammoth from 'mammoth';
+import puppeteer from 'puppeteer';
 
 export interface ConvertDocxToPdfOptions {
   inputPath: string;
@@ -28,29 +18,94 @@ export async function convertDocxToPdf(options: ConvertDocxToPdfOptions): Promis
     throw new Error(`Unsupported document input format: ${inputExtension || 'unknown'}. Only .docx is supported.`);
   }
 
-  const sourceBuffer = await readFile(inputPath);
-  const pdfBuffer = await convertToPdf(sourceBuffer);
-
-  await writeFile(outputPath, pdfBuffer);
+  const html = await convertDocxToHtml(inputPath);
+  await renderHtmlToPdf(html, outputPath);
   return outputPath;
 }
 
-async function convertToPdf(inputBuffer: Buffer): Promise<Buffer> {
-  return new Promise((resolve, reject) => {
-    libre.convert(inputBuffer, '.pdf', undefined, (error, done) => {
-      if (error) {
-        reject(new Error(`LibreOffice conversion failed: ${error.message}`));
-        return;
-      }
+async function convertDocxToHtml(inputPath: string): Promise<string> {
+  try {
+    const result = await mammoth.convertToHtml({ path: inputPath });
+    if (!result.value?.trim()) {
+      throw new Error('DOCX to HTML conversion returned empty content.');
+    }
 
-      if (!done) {
-        reject(new Error('LibreOffice conversion failed: empty conversion output.'));
-        return;
-      }
+    return wrapHtmlDocument(result.value);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`DOCX parsing failed: ${message}`);
+  }
+}
 
-      resolve(done);
+async function renderHtmlToPdf(html: string, outputPath: string): Promise<void> {
+  let browser: Awaited<ReturnType<typeof puppeteer.launch>> | undefined;
+
+  try {
+    browser = await puppeteer.launch({ headless: true });
+    const page = await browser.newPage();
+    await page.setContent(html, { waitUntil: 'networkidle0' });
+    await page.pdf({
+      path: outputPath,
+      format: 'A4',
+      printBackground: true,
+      margin: {
+        top: '18mm',
+        right: '14mm',
+        bottom: '18mm',
+        left: '14mm',
+      },
     });
-  });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const lowered = message.toLowerCase();
+
+    if (lowered.includes('could not find chrome') || lowered.includes('failed to launch the browser process')) {
+      throw new Error(
+        'PDF rendering failed: Puppeteer browser is not available.\n' +
+          'If you are using pnpm v10+, allow install scripts and install Chromium:\n' +
+          '1) pnpm approve-builds\n' +
+          '2) pnpm rebuild puppeteer\n' +
+          '3) pnpm exec puppeteer browsers install chrome',
+      );
+    }
+
+    throw new Error(`PDF rendering failed: ${message}`);
+  } finally {
+    if (browser) {
+      await browser.close();
+    }
+  }
+}
+
+function wrapHtmlDocument(content: string): string {
+  return `<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+        line-height: 1.5;
+        font-size: 12pt;
+      }
+      img {
+        max-width: 100%;
+        height: auto;
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+      }
+      td, th {
+        border: 1px solid #ddd;
+        padding: 6px;
+      }
+    </style>
+  </head>
+  <body>
+    ${content}
+  </body>
+</html>`;
 }
 
 async function ensureFileExists(filePath: string): Promise<void> {

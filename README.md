@@ -3,18 +3,25 @@
 A CLI to convert:
 
 - `.heic` -> `.jpg` or `.png` (via `sharp`)
-- `.docx` -> `.pdf` (via `libreoffice-convert`)
+- `.docx` -> `.pdf` (via `mammoth` + `puppeteer`)
 
 ## Requirements
 
 - Node.js 20+
 - `pnpm`
-- LibreOffice installed and available on your system `PATH` (required for DOCX to PDF conversion)
 
 ## Install Dependencies
 
 ```bash
 pnpm install
+```
+
+If `pnpm` blocks install scripts (common in pnpm v10+), allow Puppeteer and install Chromium:
+
+```bash
+pnpm approve-builds
+pnpm rebuild puppeteer
+pnpm exec puppeteer browsers install chrome
 ```
 
 ## Build
@@ -103,7 +110,8 @@ pnpm test
 ## Notes
 
 - HEIC conversion supports only JPG and PNG outputs.
-- DOCX conversion requires LibreOffice runtime binaries to be installed on your machine.
+- DOCX conversion is Node-only and uses an embedded Chromium runtime from `puppeteer`.
+- The first install can take longer because `puppeteer` downloads a browser binary.
 - Unsupported file extensions are rejected with clear error messages.
 
 ## Troubleshooting HEIC Errors
