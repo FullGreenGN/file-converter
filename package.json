@@ -1,5 +1,5 @@
 {
-  "name": "@fullgreen/converter",
+  "name": "@fullgreengn/converter",
   "version": "1.0.0",
   "description": "Professional CLI to convert HEIC and DOCX files.",
   "bin": {
