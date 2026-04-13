@@ -17,7 +17,7 @@ A CLI to convert:
 pnpm install
 ```
 
-If `pnpm` blocks install scripts (common in pnpm v10+), allow Puppeteer and install Chromium:
+If `pnpm` blocks install scripts (common in pnpm v10+), allow Puppeteer and `ffmpeg-static` to finish their setup steps:
 
 ```bash
 pnpm approve-builds
