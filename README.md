@@ -1,6 +1,6 @@
 # @fullgreen/converter
 
-A production-ready CLI to convert:
+A CLI to convert:
 
 - `.heic` -> `.jpg` or `.png` (via `sharp`)
 - `.docx` -> `.pdf` (via `libreoffice-convert`)
@@ -116,9 +116,14 @@ If you see errors like:
 try:
 
 ```bash
+node -v
 pnpm rebuild sharp
 pnpm up sharp
 ```
 
-Then run conversion again. If it still fails, the source HEIC may be corrupted or encoded with a codec your runtime cannot decode.
+Use Node.js 20 or 22 LTS if possible. Node 25 may have native-module compatibility gaps.
+
+On macOS, this CLI automatically falls back to `sips` when `sharp/libheif` cannot decode a HEIC variant.
+
+If conversion still fails, the source HEIC may be corrupted or encoded with a codec your runtime cannot decode.
 
