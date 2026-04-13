@@ -1,0 +1,107 @@
+# @fullgreen/converter
+
+A production-ready CLI to convert:
+
+- `.heic` -> `.jpg` or `.png` (via `sharp`)
+- `.docx` -> `.pdf` (via `libreoffice-convert`)
+
+## Requirements
+
+- Node.js 20+
+- `pnpm`
+- LibreOffice installed and available on your system `PATH` (required for DOCX to PDF conversion)
+
+## Install Dependencies
+
+```bash
+pnpm install
+```
+
+## Build
+
+```bash
+pnpm build
+```
+
+## Usage
+
+### Direct command mode
+
+```bash
+fullgreen-convert <input> [output] [--format jpg|png]
+```
+
+Examples:
+
+```bash
+# Auto output path: ./photo.jpg
+fullgreen-convert ./photo.heic
+
+# Explicit output path and format
+fullgreen-convert ./photo.heic ./photo.png --format png
+
+# Auto output path: ./report.pdf
+fullgreen-convert ./report.docx
+
+# Explicit output path
+fullgreen-convert ./report.docx ./exports/report.pdf
+```
+
+### Interactive mode
+
+If no arguments are provided, the CLI prompts for input and output details:
+
+```bash
+fullgreen-convert
+```
+
+## Run with pnpm dlx
+
+After publishing to npm, run without global install:
+
+```bash
+pnpm dlx @fullgreen/converter ./photo.heic
+```
+
+You can also pass output and format:
+
+```bash
+pnpm dlx @fullgreen/converter ./photo.heic ./photo.png --format png
+```
+
+## Test Locally with Global Link
+
+From project root:
+
+```bash
+pnpm install
+pnpm build
+pnpm link --global
+```
+
+Then use it anywhere:
+
+```bash
+fullgreen-convert /absolute/path/to/input.heic
+```
+
+To remove the global link:
+
+```bash
+pnpm unlink --global @fullgreen/converter
+```
+
+## Development Scripts
+
+```bash
+pnpm dev
+pnpm typecheck
+pnpm build
+```
+
+## Notes
+
+- HEIC conversion supports only JPG and PNG outputs.
+- DOCX conversion requires LibreOffice runtime binaries to be installed on your machine.
+- Unsupported file extensions are rejected with clear error messages.
+
