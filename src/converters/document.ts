@@ -1,7 +1,7 @@
 import { access } from 'node:fs/promises';
 import path from 'node:path';
 import mammoth from 'mammoth';
-import puppeteer from 'puppeteer';
+import { buildHtmlDocument, renderHtmlToPdf } from './pdf.js';
 
 export interface ConvertDocxToPdfOptions {
   inputPath: string;
@@ -30,83 +30,21 @@ async function convertDocxToHtml(inputPath: string): Promise<string> {
       throw new Error('DOCX to HTML conversion returned empty content.');
     }
 
-    return wrapHtmlDocument(result.value);
+    return buildHtmlDocument(`<main class="document-body">${result.value}</main>`, {
+      title: path.basename(inputPath),
+      extraStyles: `
+        .document-body img {
+          max-width: 100%;
+          height: auto;
+        }
+      `,
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     throw new Error(`DOCX parsing failed: ${message}`);
   }
 }
 
-async function renderHtmlToPdf(html: string, outputPath: string): Promise<void> {
-  let browser: Awaited<ReturnType<typeof puppeteer.launch>> | undefined;
-
-  try {
-    browser = await puppeteer.launch({ headless: true });
-    const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: 'networkidle0' });
-    await page.pdf({
-      path: outputPath,
-      format: 'A4',
-      printBackground: true,
-      margin: {
-        top: '18mm',
-        right: '14mm',
-        bottom: '18mm',
-        left: '14mm',
-      },
-    });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    const lowered = message.toLowerCase();
-
-    if (lowered.includes('could not find chrome') || lowered.includes('failed to launch the browser process')) {
-      throw new Error(
-        'PDF rendering failed: Puppeteer browser is not available.\n' +
-          'If you are using pnpm v10+, allow install scripts and install Chromium:\n' +
-          '1) pnpm approve-builds\n' +
-          '2) pnpm rebuild puppeteer\n' +
-          '3) pnpm exec puppeteer browsers install chrome',
-      );
-    }
-
-    throw new Error(`PDF rendering failed: ${message}`);
-  } finally {
-    if (browser) {
-      await browser.close();
-    }
-  }
-}
-
-function wrapHtmlDocument(content: string): string {
-  return `<!doctype html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <style>
-      body {
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-        line-height: 1.5;
-        font-size: 12pt;
-      }
-      img {
-        max-width: 100%;
-        height: auto;
-      }
-      table {
-        border-collapse: collapse;
-        width: 100%;
-      }
-      td, th {
-        border: 1px solid #ddd;
-        padding: 6px;
-      }
-    </style>
-  </head>
-  <body>
-    ${content}
-  </body>
-</html>`;
-}
 
 async function ensureFileExists(filePath: string): Promise<void> {
   try {

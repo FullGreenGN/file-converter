@@ -1,4 +1,4 @@
-export type SupportedOutputFormat = 'jpg' | 'png' | 'pdf' | 'mp3' | 'wav';
+export type SupportedOutputFormat = 'jpg' | 'png' | 'pdf' | 'mp3' | 'wav' | 'csv' | 'json' | 'yaml';
 
 export interface ConverterDefinition<TFormat extends SupportedOutputFormat = SupportedOutputFormat> {
   key: string;

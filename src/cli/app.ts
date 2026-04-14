@@ -39,8 +39,13 @@ async function runDirectMode(inputPathRaw: string, outputPathRaw?: string, optio
   await ensureFileExists(inputPath);
 
   const { definition } = resolveConverter(inputPath);
-  const format = resolveDirectFormat(definition.outputFormats, options?.format, definition.defaultOutputFormat);
-  const outputPath = outputPathRaw ? resolvePath(outputPathRaw) : definition.buildDefaultOutputPath(inputPath, format);
+  const format = resolveOutputFormat({
+    allowedFormats: definition.outputFormats,
+    requestedFormat: options?.format,
+    outputPathRaw,
+    defaultFormat: definition.defaultOutputFormat,
+  });
+  const outputPath = outputPathRaw ? resolveOutputPath(outputPathRaw, format, definition.outputFormats) : definition.buildDefaultOutputPath(inputPath, format as never);
 
   const spinner = ora(`Converting ${chalk.cyan(path.basename(inputPath))}...`).start();
   try {
@@ -61,7 +66,7 @@ async function runInteractiveMode(): Promise<void> {
   const outputFormat = await promptOutputFormat(definition);
   const defaultOutputPath = definition.buildDefaultOutputPath(inputPath, outputFormat);
   const outputPathRaw = await promptPathWithAutocomplete('Output file path', defaultOutputPath);
-  const outputPath = resolvePath(outputPathRaw);
+  const outputPath = resolveOutputPath(outputPathRaw, outputFormat, definition.outputFormats);
 
   const spinner = ora(`Converting ${chalk.cyan(path.basename(inputPath))}...`).start();
   try {
@@ -73,21 +78,65 @@ async function runInteractiveMode(): Promise<void> {
   }
 }
 
-function resolveDirectFormat(allowedFormats: readonly string[], requestedFormat: string | undefined, defaultFormat: string): string {
-  if (!requestedFormat) {
-    return defaultFormat;
-  }
-
-  const normalized = requestedFormat.toLowerCase();
-  if (!allowedFormats.includes(normalized)) {
-    throw new Error(`Invalid format option: ${requestedFormat}. Allowed values are ${allowedFormats.join(', ')}.`);
-  }
-
-  return normalized;
-}
-
 function resolvePath(filePath: string): string {
   return path.resolve(process.cwd(), filePath);
+}
+
+function resolveOutputFormat(options: {
+  allowedFormats: readonly string[];
+  requestedFormat?: string;
+  outputPathRaw?: string;
+  defaultFormat: string;
+}): string {
+  const { allowedFormats, requestedFormat, outputPathRaw, defaultFormat } = options;
+  const requested = requestedFormat?.toLowerCase();
+
+  if (requested) {
+    ensureAllowedFormat(requested, allowedFormats, requestedFormat);
+
+    if (outputPathRaw) {
+      const outputExtension = path.extname(outputPathRaw).toLowerCase().replace(/^\./, '');
+      if (outputExtension && outputExtension !== requested) {
+        throw new Error(
+          `Output path extension .${outputExtension} does not match the requested format "${requested}". ` +
+            `Choose one of: ${allowedFormats.join(', ')}.`,
+        );
+      }
+    }
+
+    return requested;
+  }
+
+  if (outputPathRaw) {
+    const outputExtension = path.extname(outputPathRaw).toLowerCase().replace(/^\./, '');
+    if (outputExtension) {
+      ensureAllowedFormat(outputExtension, allowedFormats, outputExtension);
+      return outputExtension;
+    }
+  }
+
+  return defaultFormat;
+}
+
+function resolveOutputPath(outputPathRaw: string, format: string, allowedFormats: readonly string[]): string {
+  const outputPath = resolvePath(outputPathRaw);
+  const outputExtension = path.extname(outputPath).toLowerCase().replace(/^\./, '');
+
+  if (outputExtension && !allowedFormats.includes(outputExtension)) {
+    throw new Error(`Unsupported output format: .${outputExtension}. Allowed values are ${allowedFormats.join(', ')}.`);
+  }
+
+  if (outputExtension && outputExtension !== format) {
+    throw new Error(`Output path extension .${outputExtension} does not match the selected format "${format}".`);
+  }
+
+  return outputPath;
+}
+
+function ensureAllowedFormat(format: string, allowedFormats: readonly string[], originalValue: string): void {
+  if (!allowedFormats.includes(format)) {
+    throw new Error(`Invalid format option: ${originalValue}. Allowed values are ${allowedFormats.join(', ')}.`);
+  }
 }
 
 function handleFatalError(error: unknown): never {

@@ -5,6 +5,9 @@ import { promisify } from 'node:util';
 import sharp from 'sharp';
 
 export type ImageOutputFormat = 'jpg' | 'png';
+export type ImageInputExtension = '.heic' | '.avif' | '.svg' | '.webp';
+
+export const supportedImageInputExtensions: readonly ImageInputExtension[] = ['.heic', '.avif', '.svg', '.webp'];
 
 export interface ConvertHeicToImageOptions {
   inputPath: string;
@@ -14,14 +17,14 @@ export interface ConvertHeicToImageOptions {
 
 const execFileAsync = promisify(execFile);
 
-export async function convertHeicToImage(options: ConvertHeicToImageOptions): Promise<string> {
+export async function convertImageToImage(options: ConvertHeicToImageOptions): Promise<string> {
   const { inputPath, outputPath, format } = options;
 
   await ensureFileExists(inputPath);
 
   const inputExtension = path.extname(inputPath).toLowerCase();
-  if (inputExtension !== '.heic') {
-    throw new Error(`Unsupported image input format: ${inputExtension || 'unknown'}. Only .heic is supported.`);
+  if (!supportedImageInputExtensions.includes(inputExtension as ImageInputExtension)) {
+    throw new Error(`Unsupported image input format: ${inputExtension || 'unknown'}. Supported formats are ${supportedImageInputExtensions.join(', ')}.`);
   }
 
   if (!['jpg', 'png'].includes(format)) {
@@ -29,37 +32,45 @@ export async function convertHeicToImage(options: ConvertHeicToImageOptions): Pr
   }
 
   try {
-    const image = sharp(inputPath, { failOn: 'error' });
+    const image = sharp(inputPath, {
+      failOn: 'error',
+      density: inputExtension === '.svg' ? 300 : undefined,
+    });
 
     if (format === 'jpg') {
-      await image.jpeg({ quality: 90 }).toFile(outputPath);
+      await image
+        .flatten({ background: '#ffffff' })
+        .jpeg({ quality: 90, mozjpeg: true })
+        .toFile(outputPath);
     } else {
-      await image.png().toFile(outputPath);
+      await image.png({ compressionLevel: 9 }).toFile(outputPath);
     }
   } catch (error) {
-    if (canUseMacOSSipsFallback(error)) {
+    if (inputExtension === '.heic' && canUseMacOSSipsFallback(error)) {
       try {
         await convertHeicWithSips({ inputPath, outputPath, format });
         return outputPath;
       } catch (fallbackError) {
-        throw mapHeicRuntimeError(error, inputPath, fallbackError);
+        throw mapImageRuntimeError(error, inputPath, inputExtension, fallbackError);
       }
     }
 
-    throw mapHeicRuntimeError(error, inputPath);
+    throw mapImageRuntimeError(error, inputPath, inputExtension);
   }
 
   return outputPath;
 }
 
-function mapHeicRuntimeError(error: unknown, inputPath: string, fallbackError?: unknown): Error {
+export const convertHeicToImage = convertImageToImage;
+
+function mapImageRuntimeError(error: unknown, inputPath: string, inputExtension: string, fallbackError?: unknown): Error {
   const rawMessage = error instanceof Error ? error.message : String(error);
   const lowered = rawMessage.toLowerCase();
   const fallbackMessage = fallbackError
     ? `\nFallback (macOS sips) error: ${fallbackError instanceof Error ? fallbackError.message : String(fallbackError)}`
     : '';
 
-  if (lowered.includes('support for this compression format has not been built in') || lowered.includes('heif: error while loading plugin')) {
+  if (inputExtension === '.heic' && (lowered.includes('support for this compression format has not been built in') || lowered.includes('heif: error while loading plugin'))) {
     return new Error(
       `HEIC decoding is not available in the current sharp/libvips runtime.\n` +
         `Input: ${inputPath}\n` +
@@ -73,7 +84,7 @@ function mapHeicRuntimeError(error: unknown, inputPath: string, fallbackError?: 
     );
   }
 
-  if (lowered.includes('no decoding plugin installed for this compression format')) {
+  if (inputExtension === '.heic' && lowered.includes('no decoding plugin installed for this compression format')) {
     return new Error(
       `HEIC decoding plugin is unavailable for this runtime.\n` +
         `Input: ${inputPath}\n` +
@@ -83,7 +94,7 @@ function mapHeicRuntimeError(error: unknown, inputPath: string, fallbackError?: 
     );
   }
 
-  if (lowered.includes('bad seek') || lowered.includes('invalid input')) {
+  if (inputExtension === '.heic' && (lowered.includes('bad seek') || lowered.includes('invalid input'))) {
     return new Error(
       `The HEIC file appears corrupted or partially unreadable: ${inputPath}\n` +
         `Original error: ${rawMessage}` +
